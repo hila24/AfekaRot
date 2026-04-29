@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
+  <rect width="800" height="520" fill="#000000"/>
+  <rect x="40" y="40" width="720" height="440" fill="none" stroke="#ff2e2e" stroke-width="3" rx="20"/>
+  <text x="400" y="120" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#ff2e2e">
+    Fushimi Inari
+  </text>
+  <text x="400" y="170" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#ffffff" opacity="0.85">
+    Replace this placeholder with your image
+  </text>
+  <g opacity="0.9">
+    <rect x="220" y="220" width="60" height="260" fill="#ff2e2e" opacity="0.12"/>
+    <rect x="300" y="220" width="60" height="260" fill="#ff2e2e" opacity="0.12"/>
+    <rect x="380" y="220" width="60" height="260" fill="#ff2e2e" opacity="0.12"/>
+    <rect x="460" y="220" width="60" height="260" fill="#ff2e2e" opacity="0.12"/>
+  </g>
+</svg>
+

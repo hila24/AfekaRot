@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>5 המקומות היפים שלי</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* התיקון שגורם לזה לעבוד בכל מסך */
+      .map-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+        max-width: 1140px;
+      }
+      .map-image {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      /* ריבוע לחיץ שקוף מעל כל מספר */
+      .map-link {
+        position: absolute;
+        display: block;
+        /* background: rgba(255,0,0,0.3);  -- מחק את ה-/* בהתחלה כדי לראות איפה הלחיצה ולבדוק */
+        border-radius: 50%;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <table class="page">
+      <tr>
+        <td class="top">
+          <h1 class="brand-title">5 המקומות המדהימים שאני רוצה לבקר בהם</h1>
+        </td>
+      </tr>
+      <tr>
+        <td class="main">
+          <table class="layout-table single-column">
+            <tr>
+              <td>
+                <table class="info-box">
+                  <tr>
+                    <td>
+                      <p class="section-title">מפת היעדים שלי (לחצו על העיגולים)</p>
+                      
+                      <div class="map-wrapper">
+                        <img src="assets/map.png" alt="מפת עולם" class="map-image">
+                        
+                        <a href="place1.html" class="map-link" style="top: 31%; left: 19%; width: 5%; height: 9%;" title="מקסיקו"></a>
+                        <a href="place2.html" class="map-link" style="top: 80%; left: 47%; width: 5%; height: 9%;" title="הקוטב הדרומי"></a>
+                        <a href="place3.html" class="map-link" style="top: 48%; left: 63%; width: 5%; height: 9%;" title="המלדיביים"></a>
+                        <a href="place4.html" class="map-link" style="top: 49%; left: 29%; width: 5%; height: 9%;" title="מפלי האמזונס"></a>
+                        <a href="place5.html" class="map-link" style="top: 58%; left: 81%; width: 5%; height: 9%;" title="אוסטרליה"></a>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table class="info-box">
+                  <tr>
+                    <td>
+                      <p class="section-title">רשימת היעדים</p>
+                      <table class="info-table">
+                        <tr><td class="info-key">1</td><td><a href="place1.html">מקסיקו</a></td></tr>
+                        <tr><td class="info-key">2</td><td><a href="place2.html">הקוטב הדרומי</a></td></tr>
+                        <tr><td class="info-key">3</td><td><a href="place3.html">המלדיביים</a></td></tr>
+                        <tr><td class="info-key">4</td><td><a href="place4.html">מפלי האמזונס</a></td></tr>
+                        <tr><td class="info-key">5</td><td><a href="place5.html">אוסטרליה</a></td></tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

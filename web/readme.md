@@ -1,4 +1,4 @@
-# Afeka<family_name> - פרויקט ראשון
+# AfekaRot - פרויקט ראשון
 
 כתובת השרת (לדוגמה GitHub Pages):
 `<YOUR_SERVER_URL_HERE>`

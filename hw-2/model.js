@@ -172,18 +172,9 @@ function addExample(label) {
 }
 
 function updateCounts() {
-  // Show the examples YOU are collecting (so labeling does +1). If there are no
-  // local examples yet (e.g. a fresh visitor on the live site), fall back to the
-  // counts the loaded model was trained on — so the numbers aren't just 0.
-  let c;
-  if (dataset.length > 0) {
-    c = [0, 0, 0];
-    dataset.forEach(d => c[d.label]++);
-  } else if (modelTrainedCounts) {
-    c = modelTrainedCounts;
-  } else {
-    c = [0, 0, 0];
-  }
+  // The counts always reflect the dataset in LocalStorage — so labeling does +1.
+  const c = [0, 0, 0];
+  dataset.forEach(d => c[d.label]++);
   document.getElementById('count0').textContent = c[0];
   document.getElementById('count1').textContent = c[1];
   document.getElementById('count2').textContent = c[2];
@@ -311,6 +302,12 @@ function downloadWeightsFile() {
   const counts = [0, 0, 0];
   dataset.forEach(d => counts[d.label]++);
   out.trainedCounts = counts;
+  // ship the actual drawings too, so any browser has the model's training set
+  // (pixels rounded to 2 decimals to keep the file small).
+  out.dataset = dataset.map(d => ({
+    label: d.label,
+    pixels: Array.from(d.pixels).map(v => Math.round(v * 100) / 100)
+  }));
   const content = 'window.PRETRAINED_WEIGHTS = ' + JSON.stringify(out) + ';';
   const blob = new Blob([content], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
@@ -522,6 +519,15 @@ document.getElementById('loadBtn').addEventListener('click', loadWeights);
 
 /* ---------- startup ---------- */
 loadDataset();
+// If this browser has no examples yet, adopt the training set shipped with the
+// model — so the counts match the model and you can re-train on the same data.
+if (dataset.length === 0 && window.PRETRAINED_WEIGHTS && window.PRETRAINED_WEIGHTS.dataset) {
+  dataset = window.PRETRAINED_WEIGHTS.dataset.map(d => ({
+    label: d.label,
+    pixels: Float32Array.from(d.pixels)
+  }));
+  saveDataset();
+}
 refreshOutputs();
 buildModel();
 // Seed the trained-counts from the bundled file as a fallback, so the numbers

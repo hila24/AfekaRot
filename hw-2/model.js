@@ -172,19 +172,25 @@ function addExample(label) {
 }
 
 function updateCounts() {
-  // If a trained model is loaded, show what IT was trained on (stable — adding
-  // single examples won't change it; only re-training does).
-  // Otherwise (building a fresh dataset, no trained model yet) show the live counts.
-  let c;
-  if (modelTrainedCounts) {
-    c = modelTrainedCounts;
-  } else {
-    c = [0, 0, 0];
-    dataset.forEach(d => c[d.label]++);
-  }
+  // The counts always reflect the dataset YOU are collecting — so they go up
+  // immediately every time you label an example.
+  const c = [0, 0, 0];
+  dataset.forEach(d => c[d.label]++);
   document.getElementById('count0').textContent = c[0];
   document.getElementById('count1').textContent = c[1];
   document.getElementById('count2').textContent = c[2];
+}
+
+// Separate, stable display of what the LOADED/TRAINED model was trained on.
+function updateTrainedOnDisplay() {
+  const el = document.getElementById('trainedOn');
+  if (!el) return;
+  if (modelTrainedCounts) {
+    const t = modelTrainedCounts.reduce((a, b) => a + b, 0);
+    el.textContent = `⭕ ${modelTrainedCounts[0]}  ⬜ ${modelTrainedCounts[1]}  🔺 ${modelTrainedCounts[2]}  (${t})`;
+  } else {
+    el.textContent = '— (לא מאומן)';
+  }
 }
 
 function saveDataset() {
@@ -217,6 +223,7 @@ function buildModel() {
   net = new CNN(cfg);
   modelTrainedCounts = null;   // a freshly built model is untrained
   updateCounts();
+  updateTrainedOnDisplay();
   log(`🛠️ נבנה מודל: ${cfg.convLayers} שכבות קונבולוציה, ${cfg.numFilters} פילטרים, ` +
       `פילטר ${cfg.filterSize}×${cfg.filterSize}, וקטור שטוח באורך ${net.flattenDim}`);
   document.getElementById('accuracy').textContent = '—';
@@ -278,7 +285,7 @@ async function train() {
   // the model is now trained on the current dataset — record & show those counts
   modelTrainedCounts = [0, 0, 0];
   dataset.forEach(d => modelTrainedCounts[d.label]++);
-  updateCounts();
+  updateTrainedOnDisplay();
   saveWeights();              // keep a copy in LocalStorage (survives refresh on this browser)
   downloadWeightsFile();      // download pretrained-weights.js so the model can ship with the site
   isTraining = false;
@@ -319,7 +326,7 @@ function loadBundledWeights() {
     net.importWeights(data);
     syncConfigToUI(data.config);
     if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
-    updateCounts();   // show the counts the model was trained on
+    updateTrainedOnDisplay();   // show what the model was trained on
     log('✨ נטען מודל מאומן מהקובץ pretrained-weights.js');
     return true;
   } catch (e) { log('❌ טעינת המודל מהקובץ נכשלה: ' + e.message); return false; }
@@ -431,7 +438,7 @@ function loadWeights() {
     net.importWeights(data);
     syncConfigToUI(data.config);
     if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
-    updateCounts();
+    updateTrainedOnDisplay();
     log('📂 המשקלים נטענו מ-LocalStorage');
     document.getElementById('accuracy').textContent = (evaluateAccuracy() * 100).toFixed(1) + '%';
   } catch (e) { log('❌ טעינה נכשלה: ' + e.message); }
@@ -523,4 +530,5 @@ if (localStorage.getItem(STORAGE_WEIGHTS)) {
 } else {
   log('מוכן. צייר צורות, תייג אותן, ואז אמן את המודל. 🎨');
 }
-updateCounts();   // ensure the counts reflect dataset, or the trained model
+updateCounts();             // dataset counts
+updateTrainedOnDisplay();   // what the loaded model was trained on

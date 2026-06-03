@@ -224,8 +224,42 @@ async function train() {
   }
 
   log('✅ האימון הסתיים');
+  saveWeights();              // keep a copy in LocalStorage (survives refresh on this browser)
+  downloadWeightsFile();      // download pretrained-weights.js so the model can ship with the site
   isTraining = false;
   setButtonsDisabled(false);
+}
+
+// Download the trained weights as a file (pretrained-weights.js) that the
+// page can load on startup. Put this file in the project folder and commit it,
+// and the live site will open already-trained.
+function downloadWeightsFile() {
+  if (!net) return;
+  const content = 'window.PRETRAINED_WEIGHTS = ' + JSON.stringify(net.exportWeights()) + ';';
+  const blob = new Blob([content], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pretrained-weights.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  log('📤 הורד הקובץ pretrained-weights.js — שימי אותו בתיקיית hw-2 כדי שהאתר ייטען מאומן');
+}
+
+// Load weights bundled in the project (from window.PRETRAINED_WEIGHTS, set by
+// pretrained-weights.js). Works on the live site and via file:// alike.
+function loadBundledWeights() {
+  try {
+    const data = window.PRETRAINED_WEIGHTS;
+    if (!data) return false;
+    net = new CNN(data.config);
+    net.importWeights(data);
+    syncConfigToUI(data.config);
+    log('✨ נטען מודל מאומן מהקובץ pretrained-weights.js');
+    return true;
+  } catch (e) { log('❌ טעינת המודל מהקובץ נכשלה: ' + e.message); return false; }
 }
 
 // Accuracy over the whole training set.
@@ -404,10 +438,14 @@ document.getElementById('loadBtn').addEventListener('click', loadWeights);
 loadDataset();
 refreshOutputs();
 buildModel();
-// Auto-load previously saved weights so a trained model "survives" a refresh.
+// On open, load a trained model if one is available:
+//   1) this browser's own LocalStorage (your latest training), else
+//   2) the bundled pretrained-weights.js shipped with the site.
 if (localStorage.getItem(STORAGE_WEIGHTS)) {
   loadWeights();
-  log('✨ נטען מודל מאומן ששמור מהפעם הקודמת');
+  log('✨ נטען מודל מאומן ששמור מהפעם הקודמת (LocalStorage)');
+} else if (loadBundledWeights()) {
+  // loaded from the file
 } else {
   log('מוכן. צייר צורות, תייג אותן, ואז אמן את המודל. 🎨');
 }

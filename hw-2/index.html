@@ -130,6 +130,9 @@
   </main>
 
   <script src="cnn.js"></script>
+  <!-- Trained weights shipped with the site (created by the "אמן את המודל" button).
+       If the file is missing, it is simply ignored. -->
+  <script src="pretrained-weights.js" onerror="console.info('no pretrained-weights.js yet')"></script>
   <script src="model.js"></script>
 </body>
 </html>

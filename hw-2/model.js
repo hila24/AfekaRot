@@ -172,10 +172,18 @@ function addExample(label) {
 }
 
 function updateCounts() {
-  // The counts always reflect the dataset YOU are collecting — so they go up
-  // immediately every time you label an example.
-  const c = [0, 0, 0];
-  dataset.forEach(d => c[d.label]++);
+  // Show the examples YOU are collecting (so labeling does +1). If there are no
+  // local examples yet (e.g. a fresh visitor on the live site), fall back to the
+  // counts the loaded model was trained on — so the numbers aren't just 0.
+  let c;
+  if (dataset.length > 0) {
+    c = [0, 0, 0];
+    dataset.forEach(d => c[d.label]++);
+  } else if (modelTrainedCounts) {
+    c = modelTrainedCounts;
+  } else {
+    c = [0, 0, 0];
+  }
   document.getElementById('count0').textContent = c[0];
   document.getElementById('count1').textContent = c[1];
   document.getElementById('count2').textContent = c[2];
@@ -327,6 +335,7 @@ function loadBundledWeights() {
     syncConfigToUI(data.config);
     if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
     updateTrainedOnDisplay();   // show what the model was trained on
+    updateCounts();
     log('✨ נטען מודל מאומן מהקובץ pretrained-weights.js');
     return true;
   } catch (e) { log('❌ טעינת המודל מהקובץ נכשלה: ' + e.message); return false; }
@@ -439,6 +448,7 @@ function loadWeights() {
     syncConfigToUI(data.config);
     if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
     updateTrainedOnDisplay();
+    updateCounts();
     log('📂 המשקלים נטענו מ-LocalStorage');
     document.getElementById('accuracy').textContent = (evaluateAccuracy() * 100).toFixed(1) + '%';
   } catch (e) { log('❌ טעינה נכשלה: ' + e.message); }

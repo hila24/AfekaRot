@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מודל CNN — בנייה ואימון בדפדפן</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🧠 בניית מודל CNN בדפדפן</h1>
+    <nav>
+      <a href="index.html">דף המודל</a>
+      <a href="concepts.html">40 מושגים</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ חיזוי (למעלה) ============ -->
+    <section class="panel" id="predictionPanel">
+      <div class="prediction-top">
+        <span class="pred-label">🔮 החיזוי:</span>
+        <div class="top-shape" id="topShape">— צייר צורה ולחץ "חזה צורה" —</div>
+        <details id="probDetails">
+          <summary>אחוזים ▾</summary>
+          <div class="prob-bars">
+            <div class="prob-bar"><div id="prob0Bar" style="width:0%"></div><span><b>⭕ עיגול</b><i id="prob0">0%</i></span></div>
+            <div class="prob-bar"><div id="prob1Bar" style="width:0%"></div><span><b>⬜ ריבוע</b><i id="prob1">0%</i></span></div>
+            <div class="prob-bar"><div id="prob2Bar" style="width:0%"></div><span><b>🔺 משולש</b><i id="prob2">0%</i></span></div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============ ציור ותיוג ============ -->
+    <section class="panel">
+      <h2>1. ציור ותיוג דוגמאות</h2>
+      <div class="draw-layout">
+        <!-- כפתורים מצד שמאל (בפריסת RTL זהו האלמנט השני) -->
+        <canvas id="drawCanvas" width="600" height="400"></canvas>
+        <div class="draw-controls">
+          <button id="predictBtn" class="big-action">🔮 חזה צורה</button>
+          <button class="secondary big-action" id="clearCanvas">נקה ציור</button>
+          <hr style="border-color:var(--border); margin:14px 0;">
+          <p class="hint">בחר תווית עבור הציור הנוכחי והוסף אותו לסט האימון:</p>
+          <div class="btn-row" style="margin-bottom:12px;">
+            <button class="success" data-label="0">⭕ עיגול</button>
+            <button class="success" data-label="1">⬜ ריבוע</button>
+            <button class="success" data-label="2">🔺 משולש</button>
+          </div>
+          <hr style="border-color:var(--border); margin:14px 0;">
+          <div class="stat"><span>עיגולים</span><span id="count0">0</span></div>
+          <div class="stat"><span>ריבועים</span><span id="count1">0</span></div>
+          <div class="stat"><span>משולשים</span><span id="count2">0</span></div>
+          <button class="danger" id="clearData" style="margin-top:12px; width:100%;">מחק את כל הדוגמאות</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-2">
+      <!-- ============ פרמטרים של המודל ============ -->
+      <section class="panel">
+        <h2>2. פרמטרים של המודל</h2>
+
+        <div class="control-row">
+          <label>מספר שכבות קונבולוציה (Layers)</label>
+          <input type="range" id="convLayers" min="1" max="3" step="1" value="1" />
+          <output id="convLayersVal">1</output>
+        </div>
+        <div class="control-row">
+          <label>מספר פילטרים (Filters)</label>
+          <input type="range" id="numFilters" min="2" max="12" step="1" value="6" />
+          <output id="numFiltersVal">6</output>
+        </div>
+        <div class="control-row">
+          <label>גודל הפילטר (Filter / Kernel)</label>
+          <select id="filterSize">
+            <option value="3" selected>3 × 3</option>
+            <option value="5">5 × 5</option>
+          </select>
+          <output></output>
+        </div>
+        <div class="control-row">
+          <label>קצב למידה (Learning Rate)</label>
+          <input type="range" id="learningRate" min="0.001" max="0.2" step="0.001" value="0.02" />
+          <output id="learningRateVal">0.020</output>
+        </div>
+        <div class="control-row">
+          <label>מספר אפוקים (Epochs)</label>
+          <input type="range" id="epochs" min="1" max="40" step="1" value="12" />
+          <output id="epochsVal">12</output>
+        </div>
+
+        <div class="btn-row" style="margin-top:14px;">
+          <button id="buildBtn" class="secondary">בנה מודל מחדש</button>
+          <button id="trainBtn">▶ אמן את המודל</button>
+          <button id="resetBtn" class="danger">איפוס (Reset)</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="saveBtn" class="secondary">💾 שמור משקלים (LocalStorage)</button>
+          <button id="loadBtn" class="secondary">📂 טען משקלים</button>
+        </div>
+      </section>
+
+      <!-- ============ מדדים ============ -->
+      <section class="panel">
+        <h2>3. מדדים ותוצאות</h2>
+        <div class="stat"><span>דיוק על סט האימון (Accuracy)</span><span id="accuracy">—</span></div>
+        <div class="stat"><span>הפסד אחרון (Loss)</span><span id="loss">—</span></div>
+        <div class="stat"><span>אפוק נוכחי</span><span id="epochNow">—</span></div>
+
+        <h3 style="color:var(--muted); font-size:14px;">יומן אימון:</h3>
+        <div id="log"></div>
+      </section>
+    </div>
+
+    <!-- ============ ויזואליזציה ============ -->
+    <section class="panel">
+      <h2>4. ויזואליזציה (Visualization)</h2>
+      <p class="hint">הקלט לרשת (28×28) ומפות המאפיינים (Feature Maps) שמייצרת שכבת הקונבולוציה הראשונה:</p>
+      <div class="canvas-wrap">
+        <figure style="margin:0;text-align:center;">
+          <canvas id="inputViz" class="viz-canvas" width="28" height="28" style="width:112px;height:112px;"></canvas>
+          <figcaption class="hint">קלט 28×28</figcaption>
+        </figure>
+      </div>
+      <h3 style="color:var(--muted); font-size:14px;">Feature Maps (אחרי Conv + ReLU):</h3>
+      <div id="featureMaps" class="feature-maps"></div>
+    </section>
+  </main>
+
+  <script src="cnn.js"></script>
+  <script src="model.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>40 מושגים ב-CNN — מילון</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>📚 40 מושגים במודל CNN</h1>
+    <nav>
+      <a href="index.html">דף המודל</a>
+      <a href="concepts.html">40 מושגים</a>
+    </nav>
+  </header>
+
+  <main>
+    <p class="hint">
+      מילון של 40 מושגים בלמידת מכונה ורשתות קונבולוציה — עברית ואנגלית.
+      המושגים מחולקים ל-<strong>מושגים בסיסיים</strong> ו-<strong>מושגי אימון</strong>.
+    </p>
+
+    <!-- ============ מילון המושגים ============ -->
+    <section class="panel">
+      <h2>מילון המושגים</h2>
+      <input type="text" id="search" class="search-box" placeholder="🔍 חיפוש מושג בעברית או באנגלית..." />
+      <div class="btn-row" style="margin:12px 0;">
+        <button class="secondary" data-cat="all">הכול</button>
+        <button class="secondary" data-cat="basic">מושגים בסיסיים</button>
+        <button class="secondary" data-cat="training">מושגי אימון</button>
+      </div>
+      <div id="conceptGrid"></div>
+    </section>
+  </main>
+
+  <script src="concepts.js"></script>
+</body>
+</html>

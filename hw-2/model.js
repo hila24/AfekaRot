@@ -140,13 +140,15 @@ function addExample(label) {
 }
 
 function updateCounts() {
-  // Show the current dataset's counts; if there are no local examples yet,
-  // fall back to the counts the loaded model was trained on.
-  let c = [0, 0, 0];
-  if (dataset.length > 0) {
-    dataset.forEach(d => c[d.label]++);
-  } else if (modelTrainedCounts) {
+  // If a trained model is loaded, show what IT was trained on (stable — adding
+  // single examples won't change it; only re-training does).
+  // Otherwise (building a fresh dataset, no trained model yet) show the live counts.
+  let c;
+  if (modelTrainedCounts) {
     c = modelTrainedCounts;
+  } else {
+    c = [0, 0, 0];
+    dataset.forEach(d => c[d.label]++);
   }
   document.getElementById('count0').textContent = c[0];
   document.getElementById('count1').textContent = c[1];
@@ -181,6 +183,8 @@ function readConfig() {
 function buildModel() {
   const cfg = readConfig();
   net = new CNN(cfg);
+  modelTrainedCounts = null;   // a freshly built model is untrained
+  updateCounts();
   log(`🛠️ נבנה מודל: ${cfg.convLayers} שכבות קונבולוציה, ${cfg.numFilters} פילטרים, ` +
       `פילטר ${cfg.filterSize}×${cfg.filterSize}, וקטור שטוח באורך ${net.flattenDim}`);
   document.getElementById('accuracy').textContent = '—';
@@ -231,6 +235,10 @@ async function train() {
   }
 
   log('✅ האימון הסתיים');
+  // the model is now trained on the current dataset — record & show those counts
+  modelTrainedCounts = [0, 0, 0];
+  dataset.forEach(d => modelTrainedCounts[d.label]++);
+  updateCounts();
   saveWeights();              // keep a copy in LocalStorage (survives refresh on this browser)
   downloadWeightsFile();      // download pretrained-weights.js so the model can ship with the site
   isTraining = false;

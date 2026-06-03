@@ -120,6 +120,38 @@ function toTensor(pixels) {
   return t;
 }
 
+/* =================================================================
+   DATA AUGMENTATION
+   Produce a randomly transformed copy of a 28x28 image — rotation,
+   scale and small shift — so one drawing teaches the network many
+   orientations/sizes. This makes the model far more robust (e.g. it
+   learns that a triangle is a triangle in ANY rotation).
+   Uses inverse mapping with nearest-neighbour sampling. Plain JS.
+   ================================================================= */
+function augmentPixels(src) {
+  const N = INPUT_SIZE;
+  const out = new Float32Array(N * N);
+  const cx = (N - 1) / 2, cy = (N - 1) / 2;
+
+  const angle = (Math.random() * 2 - 1) * (Math.PI / 2);  // rotation: ±90°
+  const scale = 0.8 + Math.random() * 0.4;                // scale: 0.8x .. 1.2x
+  const dx = (Math.random() * 2 - 1) * 3;                 // shift: ±3 px
+  const dy = (Math.random() * 2 - 1) * 3;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+
+  // For each output pixel, find where it came from in the source (inverse map).
+  for (let oy = 0; oy < N; oy++) {
+    for (let ox = 0; ox < N; ox++) {
+      let tx = (ox - cx - dx) / scale;
+      let ty = (oy - cy - dy) / scale;
+      const ix = Math.round(cx + tx * cos + ty * sin);
+      const iy = Math.round(cy - tx * sin + ty * cos);
+      if (ix >= 0 && ix < N && iy >= 0 && iy < N) out[oy * N + ox] = src[iy * N + ix];
+    }
+  }
+  return out;
+}
+
 function isCanvasEmpty(pixels) {
   let sum = 0;
   for (let i = 0; i < pixels.length; i++) sum += pixels[i];
@@ -213,18 +245,26 @@ async function train() {
   setButtonsDisabled(true);
   const cfg = readConfig();
   const lr = cfg.learningRate;
-  log(`🚀 מתחיל אימון: ${cfg.epochs} אפוקים, ${dataset.length} דוגמאות, LR=${lr}`);
+  const AUG_PER = 4;   // each example -> 1 original + 3 randomly augmented copies per epoch
+  log(`🚀 מתחיל אימון: ${cfg.epochs} אפוקים, ${dataset.length} דוגמאות ` +
+      `(×${AUG_PER} עם הגדלת נתונים/Augmentation), LR=${lr}`);
 
   for (let epoch = 1; epoch <= cfg.epochs; epoch++) {
-    const order = dataset.slice();
-    shuffle(order);
-    let totalLoss = 0;
-    for (const ex of order) {
-      const input = toTensor(ex.pixels);
-      totalLoss += net.trainStep(input, ex.label, lr);
+    // Build this epoch's samples: the clean drawing + several random variations.
+    const samples = [];
+    for (const ex of dataset) {
+      samples.push({ pixels: ex.pixels, label: ex.label });             // original
+      for (let k = 1; k < AUG_PER; k++)
+        samples.push({ pixels: augmentPixels(ex.pixels), label: ex.label }); // augmented
     }
-    const avgLoss = totalLoss / order.length;
-    const acc = evaluateAccuracy();
+    shuffle(samples);
+
+    let totalLoss = 0;
+    for (const s of samples) {
+      totalLoss += net.trainStep(toTensor(s.pixels), s.label, lr);
+    }
+    const avgLoss = totalLoss / samples.length;
+    const acc = evaluateAccuracy();   // accuracy is measured on the clean originals
 
     document.getElementById('epochNow').textContent = `${epoch} / ${cfg.epochs}`;
     document.getElementById('loss').textContent = avgLoss.toFixed(4);

@@ -235,7 +235,13 @@ async function train() {
 // and the live site will open already-trained.
 function downloadWeightsFile() {
   if (!net) return;
-  const content = 'window.PRETRAINED_WEIGHTS = ' + JSON.stringify(net.exportWeights()) + ';';
+  const out = net.exportWeights();
+  // also remember how many examples of each shape the model was trained on,
+  // so the counts can be shown even on a fresh browser / the live site.
+  const counts = [0, 0, 0];
+  dataset.forEach(d => counts[d.label]++);
+  out.trainedCounts = counts;
+  const content = 'window.PRETRAINED_WEIGHTS = ' + JSON.stringify(out) + ';';
   const blob = new Blob([content], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -257,6 +263,11 @@ function loadBundledWeights() {
     net = new CNN(data.config);
     net.importWeights(data);
     syncConfigToUI(data.config);
+    // show the number of examples the model was trained on (from the file)
+    if (data.trainedCounts) {
+      for (let i = 0; i < 3; i++)
+        document.getElementById('count' + i).textContent = data.trainedCounts[i];
+    }
     log('✨ נטען מודל מאומן מהקובץ pretrained-weights.js');
     return true;
   } catch (e) { log('❌ טעינת המודל מהקובץ נכשלה: ' + e.message); return false; }

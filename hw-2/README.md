@@ -4,7 +4,7 @@
 **ללא ספריות חיצוניות** — כל הרשת ממומשת מאפס בוונילה JS.
 
 כתובת השרת (GitHub Pages):
-https://hila24.github.io/AfekaRot/hw-2/
+[https://hila24.github.io/AfekaRot/hw-2/](https://hila24.github.io/AfekaRot/hw-2/)
 
 ## מגישים
 רועי דובין 322865320 והילה רוט 211602487

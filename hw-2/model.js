@@ -18,6 +18,7 @@ const STORAGE_WEIGHTS = 'cnn_weights_v1';
 let net = null;                 // the CNN instance
 let dataset = [];               // [{ pixels: Float32Array(784), label: 0|1|2 }]
 let isTraining = false;
+let modelTrainedCounts = null;  // [c0,c1,c2] the model was trained on (for display when dataset is empty)
 
 /* =================================================================
    DRAWING CANVAS
@@ -139,8 +140,14 @@ function addExample(label) {
 }
 
 function updateCounts() {
-  const c = [0, 0, 0];
-  dataset.forEach(d => c[d.label]++);
+  // Show the current dataset's counts; if there are no local examples yet,
+  // fall back to the counts the loaded model was trained on.
+  let c = [0, 0, 0];
+  if (dataset.length > 0) {
+    dataset.forEach(d => c[d.label]++);
+  } else if (modelTrainedCounts) {
+    c = modelTrainedCounts;
+  }
   document.getElementById('count0').textContent = c[0];
   document.getElementById('count1').textContent = c[1];
   document.getElementById('count2').textContent = c[2];
@@ -263,11 +270,8 @@ function loadBundledWeights() {
     net = new CNN(data.config);
     net.importWeights(data);
     syncConfigToUI(data.config);
-    // show the number of examples the model was trained on (from the file)
-    if (data.trainedCounts) {
-      for (let i = 0; i < 3; i++)
-        document.getElementById('count' + i).textContent = data.trainedCounts[i];
-    }
+    if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
+    updateCounts();   // show the counts the model was trained on
     log('✨ נטען מודל מאומן מהקובץ pretrained-weights.js');
     return true;
   } catch (e) { log('❌ טעינת המודל מהקובץ נכשלה: ' + e.message); return false; }
@@ -362,7 +366,11 @@ function drawFeatureMaps(input) {
 function saveWeights() {
   if (!net) { log('⚠️ אין מודל לשמירה'); return; }
   try {
-    localStorage.setItem(STORAGE_WEIGHTS, JSON.stringify(net.exportWeights()));
+    const out = net.exportWeights();
+    const counts = [0, 0, 0];
+    dataset.forEach(d => counts[d.label]++);
+    out.trainedCounts = counts;
+    localStorage.setItem(STORAGE_WEIGHTS, JSON.stringify(out));
     log('💾 המשקלים נשמרו ב-LocalStorage');
   } catch (e) { log('❌ שמירה נכשלה: ' + e.message); }
 }
@@ -374,6 +382,8 @@ function loadWeights() {
     net = new CNN(data.config);
     net.importWeights(data);
     syncConfigToUI(data.config);
+    if (data.trainedCounts) modelTrainedCounts = data.trainedCounts;
+    updateCounts();
     log('📂 המשקלים נטענו מ-LocalStorage');
     document.getElementById('accuracy').textContent = (evaluateAccuracy() * 100).toFixed(1) + '%';
   } catch (e) { log('❌ טעינה נכשלה: ' + e.message); }
@@ -449,6 +459,11 @@ document.getElementById('loadBtn').addEventListener('click', loadWeights);
 loadDataset();
 refreshOutputs();
 buildModel();
+// Seed the trained-counts from the bundled file as a fallback, so the numbers
+// show even if we end up loading weights from LocalStorage with an empty dataset.
+if (window.PRETRAINED_WEIGHTS && window.PRETRAINED_WEIGHTS.trainedCounts) {
+  modelTrainedCounts = window.PRETRAINED_WEIGHTS.trainedCounts;
+}
 // On open, load a trained model if one is available:
 //   1) this browser's own LocalStorage (your latest training), else
 //   2) the bundled pretrained-weights.js shipped with the site.
@@ -460,3 +475,4 @@ if (localStorage.getItem(STORAGE_WEIGHTS)) {
 } else {
   log('מוכן. צייר צורות, תייג אותן, ואז אמן את המודל. 🎨');
 }
+updateCounts();   // ensure the counts reflect dataset, or the trained model

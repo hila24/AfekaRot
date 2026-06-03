@@ -3,6 +3,9 @@
 בניית מודל CNN בצד הלקוח (client-side) בשני דפי HTML עם JavaScript ו-CSS,
 **ללא ספריות חיצוניות** — כל הרשת ממומשת מאפס בוונילה JS.
 
+כתובת השרת (GitHub Pages):
+https://hila24.github.io/AfekaRot/hw-2/
+
 ## איך מריצים
 פתיחה ישירה של `index.html` בדפדפן (לחיצה כפולה), או הרצת שרת מקומי:
 ```bash

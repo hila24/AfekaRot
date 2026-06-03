@@ -1,7 +1,7 @@
 # המקומות שהייתי רוצה לבקר בהם - פרויקט ראשון
 
 כתובת השרת (לדוגמה GitHub Pages):
-https://hila24.github.io/AfekaRot/web/
+https://hila24.github.io/AfekaRot/hw-1/
 
 ## מבנה האתר
 

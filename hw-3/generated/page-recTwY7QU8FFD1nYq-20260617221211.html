@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang='he' dir='rtl'><head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>תל אביב attractions</title>
+<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>
+<style>:root{--bg:#0f172a;--card:#1e293b;--accent:#38bdf8;--text:#e2e8f0}*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}header{padding:48px 20px;text-align:center;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}header h1{margin:0;font-size:2.6rem}header p{max-width:760px;margin:16px auto 0;line-height:1.7}.wrap{max-width:1000px;margin:0 auto;padding:24px 20px 60px}h2{color:var(--accent);border-bottom:2px solid #334155;padding-bottom:8px}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.gallery img{width:100%;height:200px;object-fit:cover;border-radius:12px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{background:var(--card);border-radius:14px;padding:18px;position:relative}.card .num{position:absolute;inset-inline-start:14px;top:-14px;width:30px;height:30px;background:var(--accent);color:#04293a;border-radius:50%;display:grid;place-items:center;font-weight:700}#map{height:420px;border-radius:14px;margin-top:8px}footer{text-align:center;padding:24px;opacity:.6;font-size:.85rem}</style></head>
+<body><header><h1>תל אביב ישראל</h1><p>תל אביב היא עיר הבירה הכלכלית של ישראל, והיא ממוקמת לאורך חופי הים התיכון. העיר ידועה בחיי הלילה התוססים שלה, במסעדות הטובות ובחופים היפים. תל אביב היא גם מרכז תרבותי ואמנותי, עם מוזיאונים, תיאטראות וגלריות רבות.</p></header>
+<div class='wrap'><h2>תמונות מהאזור</h2><div class='gallery'>
+<img src='https://live.staticflickr.com/15/69824900_eb428925be_b.jpg' alt='תל אביב'><img src='https://live.staticflickr.com/65535/52269203221_879787225c_b.jpg' alt='תל אביב'><img src='https://live.staticflickr.com/65535/52268243317_cdb49c2400_b.jpg' alt='תל אביב'></div>
+<h2>אטרקציות מומלצות</h2><div class='cards'>
+<article class='card' data-lat='32.073746' data-lng='34.774142'><span class='num'>1</span><h3>שוק הקרמל</h3><p>שוק הקרמל הוא אחד השווקים הגדולים והמוכרים בתל אביב, עם מגוון רחב של סטנדים וחנויות.</p><small>32.073746, 34.774142</small></article>
+<article class='card' data-lat='32.057654' data-lng='34.774499'><span class='num'>2</span><h3>חוף תל ברוך</h3><p>חוף תל ברוך הוא אחד החופים הפופולריים ביותר בתל אביב, עם מים צלולים וחול לבן.</p><small>32.057654, 34.774499</small></article>
+<article class='card' data-lat='32.080213' data-lng='34.764755'><span class='num'>3</span><h3>מוזיאון תל אביב לאמנות</h3><p>מוזיאון תל אביב לאמנות הוא אחד המוזיאונים החשובים ביותר בישראל, עם אוסף עשיר של יצירות אמנות.</p><small>32.080213, 34.764755</small></article>
+<article class='card' data-lat='32.070987' data-lng='34.785355'><span class='num'>4</span><h3>גן העצמאות</h3><p>גן העצמאות הוא פארק יפה ושקט בלב תל אביב, עם מסלולי הליכה ונוף יפה.</p><small>32.070987, 34.785355</small></article>
+<article class='card' data-lat='32.061444' data-lng='34.768141'><span class='num'>5</span><h3>נמל תל אביב</h3><p>נמל תל אביב הוא אזור תיירותי פופולרי, עם מסעדות, ברים וחנויות.</p><small>32.061444, 34.768141</small></article>
+</div>
+<h2>מפה ונקודות ציון</h2><div id='map'></div></div>
+<footer>נוצר אוטומטית באמצעות Make + Groq AI</footer>
+<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
+<script>const map=L.map('map').setView([32.072, 34.774],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OpenStreetMap'}).addTo(map);const g=[];document.querySelectorAll('.card').forEach(function(c){var lat=parseFloat(c.getAttribute('data-lat'));var lng=parseFloat(c.getAttribute('data-lng'));var n=c.querySelector('h3').textContent;if(!isNaN(lat)&&!isNaN(lng)){g.push(L.marker([lat,lng]).addTo(map).bindPopup(n));}});if(g.length){map.fitBounds(L.featureGroup(g).getBounds().pad(0.2));}</script></body></html>

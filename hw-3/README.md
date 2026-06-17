@@ -43,31 +43,60 @@
 
 ---
 
-## איפה משיגים ומשלבים כל מפתח API  ⭐ (חשוב למי שבודק)
+## איך משיגים ומשלבים כל מפתח API — צעד אחר צעד  ⭐ (חשוב למי שבודק)
 
-> **כלל ברזל:** המפתחות נכנסים **רק** לתוך Make (במסך החיבורים/Connections של כל מודול),
+> **כלל ברזל:** המפתחות נכנסים **רק** לתוך Make (מסך ה-Connections של כל מודול),
 > **לעולם לא** לקובץ בפרויקט.
 
-### 1. Groq (ה-AI) — חינמי
-- **משיגים:** <https://console.groq.com> → **API Keys** → *Create API Key* → מעתיקים `gsk_...`.
-- **משלבים:** מודול **HTTP (Groq)** → Authentication = **API key** → Header: `Authorization` = `Bearer gsk_...`
-  (שורה אחת בלבד — בלי רווח/שורה ריקה בסוף).
+### 1. Groq — מפתח ה-AI (חינמי)
+**איך משיגים את הטוקן:**
+1. נכנסים ל-<https://console.groq.com> ומתחברים (אפשר עם חשבון Google).
+2. בתפריט הצד השמאלי לוחצים על **API Keys**.
+3. לוחצים **Create API Key** → נותנים שם (`afeka-hw3`) → **Submit**.
+4. **מעתיקים מיד** את המפתח שמתחיל ב-`gsk_...` — הוא מוצג רק פעם אחת!
 
-### 2. Airtable (טריגר + שמירת הקישור) — חינמי
-- **משיגים:** <https://airtable.com/create/tokens> → הרשאות `data.records:read` + `data.records:write` + `schema.bases:read`, משייכים את ה-Base → `pat...`.
-- **טבלה:** `City`, `Email`, `Status` (New/PendingApproval/Approved/Rejected), `Note`, `PageLink`, `Last Modified` (עוקב אחרי All editable fields).
-- **משלבים:** במודולי **Airtable** (Watch + Update) → Connection → מדביקים את ה-PAT.
+**איך משלבים ב-Make:** מודול **HTTP (Groq)** → *Authentication* = **API key** →
+*Add to* = **Header** → **Name** = `Authorization` , **Value** = `Bearer gsk_...`
+(המילה `Bearer`, רווח, ואז המפתח — שורה אחת, בלי רווח/שורה ריקה בסוף).
 
-### 3. GitHub (גיבוי בכל הרצה) — חינמי
-- **משיגים:** <https://github.com/settings/tokens> → Fine-grained token → הרשאת **Contents: Read and write** על הריפו → `github_pat_...`.
-- **משלבים:** מודול **GitHub** → Connection.
+### 2. Airtable — Personal Access Token (חינמי)
+**איך משיגים את הטוקן:**
+1. נכנסים ל-<https://airtable.com/create/tokens> (מחוברים לחשבון).
+2. לוחצים **Create new token** → נותנים שם.
+3. תחת **Scopes** → **Add a scope** ובוחרים שלושה: `data.records:read`, `data.records:write`, `schema.bases:read`.
+4. תחת **Access** → **Add a base** → בוחרים את הבסיס שלכם.
+5. לוחצים **Create token** → **מעתיקים** את המפתח שמתחיל ב-`pat...`.
 
-### 4. מייל — **Outlook** (חינמי)
-- Make חוסם SMTP רגיל ל-Gmail, לכן השתמשנו ב-**Outlook**:
-- **משלבים:** מודול **Email → Send an Email** → Connection (SMTP): Host `smtp-mail.outlook.com`, Port `587`, STARTTLS, המייל והסיסמה. (חלופה: "Sign in with Microsoft".)
+**איך משלבים ב-Make:** במודולי **Airtable** (Watch + Update) → *Connection* →
+**Create a connection** → סוג **Personal Access Token** → מדביקים את ה-`pat...`.
 
-### ללא מפתח
-- **Openverse** (תמונות) ו-**OpenStreetMap/Leaflet** (מפה).
+### 3. GitHub — Fine-grained Token (חינמי)
+**איך משיגים את הטוקן:**
+1. ב-GitHub: לוחצים על תמונת הפרופיל (ימין-עליון) → **Settings**.
+2. גוללים למטה בתפריט הצד → **Developer settings**.
+3. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+4. ממלאים **Token name** ו-**Expiration** (למשל 90 יום).
+5. תחת **Repository access** → בוחרים **Only select repositories** → בוחרים את `AfekaRot`.
+6. תחת **Permissions** → **Repository permissions** → מוצאים **Contents** → קובעים **Read and write**.
+7. לוחצים **Generate token** → **מעתיקים** את המפתח שמתחיל ב-`github_pat_...`.
+
+**איך משלבים ב-Make:** מודול **GitHub** → *Connection* → **Create a connection** →
+מדביקים את ה-Token (או **Sign in with GitHub**).
+
+### 4. מייל — Outlook (חינמי)
+> Make **חוסם SMTP רגיל ל-Gmail**, לכן השתמשנו ב-**Outlook** (SMTP מותר).
+
+**מה צריך:**
+1. חשבון Outlook/Hotmail.
+2. אם מופעל אצלכם **אימות דו-שלבי** — צריך **App Password**: <https://account.microsoft.com/security> → *Advanced security options* → *App passwords* → יצירה והעתקה. (בלי 2FA — הסיסמה הרגילה.)
+
+**איך משלבים ב-Make:** מודול **Email → Send an Email** → *Connection* → **Create a connection** (SMTP):
+- **Connection type:** `Others (SMTP)` · **Email provider:** `Outlook.com`
+- (או ידני: **Host** `smtp-mail.outlook.com` · **Port** `587` · **STARTTLS**)
+- **Username:** המייל המלא · **Password:** הסיסמה / App Password.
+
+### ללא מפתח (לא צריך כלום)
+- **Openverse** (תמונות) ו-**OpenStreetMap/Leaflet** (מפה) — חינמיים וללא מפתח.
 
 ---
 

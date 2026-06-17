@@ -1,0 +1,190 @@
+{
+  "name": "HW3 — City → AI HTML page (Airtable→Groq→GitHub→Email approval)",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [ { "mode": "everyMinute" } ] },
+        "baseId": { "__rl": true, "mode": "list", "value": "REPLACE_BASE_ID" },
+        "tableId": { "__rl": true, "mode": "list", "value": "REPLACE_TABLE_ID" },
+        "triggerField": "Created"
+      },
+      "id": "node-airtable-trigger",
+      "name": "Airtable Trigger",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [ -560, 300 ],
+      "credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable PAT" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "a1", "name": "city",  "value": "={{ $json.fields.City }}",  "type": "string" },
+          { "id": "a2", "name": "email", "value": "={{ $json.fields.Email }}",  "type": "string" },
+          { "id": "a3", "name": "recordId", "value": "={{ $json.id }}", "type": "string" },
+          { "id": "a4", "name": "note", "value": "", "type": "string" }
+        ] }
+      },
+      "id": "node-prepare",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -340, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.6,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"אתה מדריך תיירות. החזר אך ורק JSON תקין (ללא טקסט נוסף) במבנה: {\\\"city\\\":string,\\\"country\\\":string,\\\"intro\\\":string(2-3 משפטים בעברית),\\\"attractions\\\":[{\\\"name\\\":string בעברית,\\\"description\\\":string משפט בעברית,\\\"lat\\\":number,\\\"lng\\\":number}]}. תן בדיוק 5 אטרקציות אמיתיות עם קואורדינטות מדויקות (lat/lng). הקפד שהקואורדינטות אמיתיות.\" },\n    { \"role\": \"user\", \"content\": \"עיר/מדינה: {{ $json.city }}. {{ $json.note ? ('הערת המשתמש לשיפור הדף הקודם: ' + $json.note) : '' }}\" }\n  ]\n}"
+      },
+      "id": "node-groq",
+      "name": "Groq — generate guide",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ -120, 300 ],
+      "credentials": { "httpHeaderAuth": { "id": "2", "name": "Groq API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// מפענח את ה-JSON מ-Groq ומכין שאילתת תמונות ל-Openverse.\nconst content = $json.choices[0].message.content;\nlet ai;\ntry { ai = JSON.parse(content); }\ncatch (e) { ai = JSON.parse(content.replace(/```json|```/g, '').trim()); }\nreturn [{ json: { ai, query: (ai.city || '') + ' landmark city' } }];"
+      },
+      "id": "node-parse",
+      "name": "Parse + Image Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 100, 300 ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openverse.org/v1/images/",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [
+          { "name": "q", "value": "={{ $json.query }}" },
+          { "name": "page_size", "value": "8" }
+        ] },
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "User-Agent", "value": "afeka-hw3/1.0" }
+        ] }
+      },
+      "id": "node-openverse",
+      "name": "Openverse Images",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 320, 300 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// בונה את דף ה-HTML המעוצב (גלריה + כרטיסי אטרקציות + מפת Leaflet עם סמנים).\n// >>> ערכו את שתי השורות הבאות לפי המשתמש/ריפו שלכם <<<\nconst OWNER = 'hila24';\nconst REPO  = 'AfekaRot';\n\nconst ai = $('Parse + Image Query').first().json.ai;\nconst ov = $json;\nconst images = (ov.results || []).map(r => r.url).filter(Boolean).slice(0, 3);\n\nfunction esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}\nconst city=esc(ai.city), country=esc(ai.country), intro=esc(ai.intro);\nconst atts = Array.isArray(ai.attractions)?ai.attractions:[];\nconst pts = atts.filter(a=>typeof a.lat==='number'&&typeof a.lng==='number');\nconst cLat = pts.length?pts.reduce((s,a)=>s+a.lat,0)/pts.length:32.0853;\nconst cLng = pts.length?pts.reduce((s,a)=>s+a.lng,0)/pts.length:34.7818;\nconst gallery = images.map((u,i)=>`      <img src=\"${esc(u)}\" alt=\"${city} ${i+1}\" loading=\"lazy\">`).join('\\n');\nconst cards = atts.map((a,i)=>`\\n      <article class=\"card\"><span class=\"num\">${i+1}</span><h3>${esc(a.name)}</h3><p>${esc(a.description)}</p><small>\\uD83D\\uDCCD ${Number(a.lat).toFixed(4)}, ${Number(a.lng).toFixed(4)}</small></article>`).join('');\nconst markers = JSON.stringify(atts.map(a=>({name:a.name,lat:a.lat,lng:a.lng})));\n\nconst html = `<!DOCTYPE html>\n<html lang=\"he\" dir=\"rtl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>${city} — מדריך אטרקציות</title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<style>:root{--bg:#0f172a;--card:#1e293b;--accent:#38bdf8;--text:#e2e8f0}*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}header{padding:48px 20px;text-align:center;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}header h1{margin:0;font-size:2.6rem}header p{max-width:760px;margin:16px auto 0;line-height:1.7;opacity:.95}.wrap{max-width:1000px;margin:0 auto;padding:24px 20px 60px}h2{color:var(--accent);border-bottom:2px solid #334155;padding-bottom:8px}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.gallery img{width:100%;height:200px;object-fit:cover;border-radius:12px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{background:var(--card);border-radius:14px;padding:18px;position:relative}.card .num{position:absolute;inset-inline-start:14px;top:-14px;width:30px;height:30px;background:var(--accent);color:#04293a;border-radius:50%;display:grid;place-items:center;font-weight:700}.card h3{margin:6px 0 8px}#map{height:420px;border-radius:14px;margin-top:8px}footer{text-align:center;padding:24px;opacity:.6;font-size:.85rem}</style></head>\n<body><header><h1>${city}${country?(' · '+country):''}</h1><p>${intro}</p></header>\n<div class=\"wrap\"><h2>תמונות מהאזור</h2><div class=\"gallery\">\\n${gallery}\\n</div>\n<h2>אטרקציות מומלצות</h2><div class=\"cards\">${cards}\\n</div>\n<h2>מפה ונקודות ציון</h2><div id=\"map\"></div></div>\n<footer>נוצר אוטומטית באמצעות n8n + Groq AI · מפה: OpenStreetMap</footer>\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>\n<script>const markers=${markers};const map=L.map('map').setView([${cLat},${cLng}],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(map);const g=[];markers.forEach(m=>{if(typeof m.lat==='number'&&typeof m.lng==='number'){g.push(L.marker([m.lat,m.lng]).addTo(map).bindPopup(m.name));}});if(g.length)map.fitBounds(L.featureGroup(g).getBounds().pad(0.2));</script></body></html>`;\n\nconst slug = (ai.city||'page').toString().trim().toLowerCase().replace(/[^a-z0-9\\u0590-\\u05FF]+/g,'-').replace(/^-|-$/g,'') || 'page';\nconst filename = `${slug}-${Date.now()}.html`;\nconst filePath = `hw-3/generated/${filename}`;\nconst pageUrl = `https://${OWNER}.github.io/${REPO}/${filePath}`;\n\n// HTML קצר לגוף המייל (תצוגה מקדימה + קישור לדף המלא עם המפה).\nconst emailHtml = `<div style=\"font-family:Arial;direction:rtl\"><h2>${city}${country?(' · '+country):''}</h2><p>${intro}</p><p>${images.map(u=>`<img src=\"${u}\" style=\"width:150px;height:100px;object-fit:cover;margin:4px;border-radius:8px\">`).join('')}</p><p><b>אטרקציות:</b> ${atts.map(a=>esc(a.name)).join(' · ')}</p><p>🔗 הדף המלא (כולל מפה אינטראקטיבית): <a href=\"${pageUrl}\">${pageUrl}</a></p></div>`;\n\nreturn [{ json: { html, emailHtml, filePath, filename, pageUrl, city, owner: OWNER, repo: REPO } }];"
+      },
+      "id": "node-build",
+      "name": "Build HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 540, 300 ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "create",
+        "owner": { "__rl": true, "mode": "name", "value": "={{ $json.owner }}" },
+        "repository": { "__rl": true, "mode": "name", "value": "={{ $json.repo }}" },
+        "filePath": "={{ $json.filePath }}",
+        "fileContent": "={{ $json.html }}",
+        "commitMessage": "=hw-3: backup generated page for {{ $json.city }}"
+      },
+      "id": "node-github",
+      "name": "GitHub Backup Commit",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [ 760, 300 ],
+      "credentials": { "githubApi": { "id": "3", "name": "GitHub PAT" } }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAndWait",
+        "sendTo": "={{ $('Prepare').first().json.email }}",
+        "subject": "=הדף שלך עבור {{ $('Build HTML').first().json.city }} מוכן — אישור/דחייה",
+        "message": "={{ $('Build HTML').first().json.emailHtml }}",
+        "responseType": "customForm",
+        "defineForm": "fields",
+        "formFields": { "values": [
+          { "fieldLabel": "החלטה", "fieldType": "dropdown", "fieldOptions": { "values": [ { "option": "אישור" }, { "option": "דחייה" } ] }, "requiredField": true },
+          { "fieldLabel": "הערה (אופציונלי — לשיפור הדף אם נדחה)", "fieldType": "text" }
+        ] },
+        "options": {}
+      },
+      "id": "node-email",
+      "name": "Email: Send & Wait",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [ 980, 300 ],
+      "credentials": { "gmailOAuth2": { "id": "4", "name": "Gmail account" } },
+      "webhookId": "hw3-approval-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "caseSensitive": true, "version": 2 }, "combinator": "and", "conditions": [
+          { "id": "c1", "leftValue": "={{ $json.data['החלטה'] }}", "rightValue": "אישור", "operator": { "type": "string", "operation": "equals" } }
+        ] }
+      },
+      "id": "node-if",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [ 1200, 300 ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "baseId": { "__rl": true, "mode": "list", "value": "REPLACE_BASE_ID" },
+        "tableId": { "__rl": true, "mode": "list", "value": "REPLACE_TABLE_ID" },
+        "columns": { "mappingMode": "defineBelow", "value": {
+          "id": "={{ $('Prepare').first().json.recordId }}",
+          "Status": "Approved",
+          "PageLink": "={{ $('Build HTML').first().json.pageUrl }}",
+          "Attractions": "={{ $('Parse + Image Query').first().json.ai.attractions.map(a => a.name).join(', ') }}"
+        }, "matchingColumns": [ "id" ] }
+      },
+      "id": "node-airtable-save",
+      "name": "Airtable: Save Link",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [ 1420, 200 ],
+      "credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable PAT" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "n1", "name": "city",  "value": "={{ $('Prepare').first().json.city }}", "type": "string" },
+          { "id": "n2", "name": "email", "value": "={{ $('Prepare').first().json.email }}", "type": "string" },
+          { "id": "n3", "name": "recordId", "value": "={{ $('Prepare').first().json.recordId }}", "type": "string" },
+          { "id": "n4", "name": "note", "value": "={{ $json.data['הערה (אופציונלי — לשיפור הדף אם נדחה)'] || 'שפר את הדף, נסה אטרקציות שונות' }}", "type": "string" }
+        ] }
+      },
+      "id": "node-addnote",
+      "name": "Add Note → regenerate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 1420, 420 ]
+    }
+  ],
+  "connections": {
+    "Airtable Trigger": { "main": [ [ { "node": "Prepare", "type": "main", "index": 0 } ] ] },
+    "Prepare": { "main": [ [ { "node": "Groq — generate guide", "type": "main", "index": 0 } ] ] },
+    "Groq — generate guide": { "main": [ [ { "node": "Parse + Image Query", "type": "main", "index": 0 } ] ] },
+    "Parse + Image Query": { "main": [ [ { "node": "Openverse Images", "type": "main", "index": 0 } ] ] },
+    "Openverse Images": { "main": [ [ { "node": "Build HTML", "type": "main", "index": 0 } ] ] },
+    "Build HTML": { "main": [ [ { "node": "GitHub Backup Commit", "type": "main", "index": 0 } ] ] },
+    "GitHub Backup Commit": { "main": [ [ { "node": "Email: Send & Wait", "type": "main", "index": 0 } ] ] },
+    "Email: Send & Wait": { "main": [ [ { "node": "Approved?", "type": "main", "index": 0 } ] ] },
+    "Approved?": { "main": [ [ { "node": "Airtable: Save Link", "type": "main", "index": 0 } ], [ { "node": "Add Note → regenerate", "type": "main", "index": 0 } ] ] },
+    "Add Note → regenerate": { "main": [ [ { "node": "Groq — generate guide", "type": "main", "index": 0 } ] ] }
+  }
+}

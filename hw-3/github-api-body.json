@@ -1,0 +1,5 @@
+{
+  "message": "hw-3: backup page for {{1.City}}",
+  "content": "{{base64(4.data.choices[1].message.content)}}",
+  "branch": "main"
+}

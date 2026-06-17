@@ -1,85 +1,94 @@
-# בניית האוטומציה ב-Make.com — צעד אחר צעד
+# בניית האוטומציה ב-Make.com — מדריך מלא (7 מודולים)
 
-Make חינמי לתמיד (1000 פעולות/חודש, 2 תרחישים פעילים) — אין טרייל שפג.
-זהו המדריך הראשי. יש גם `make-blueprint.json` שאפשר לנסות לייבא, אבל אם הייבוא
-לא חלק — בונים ידנית לפי המדריך הזה (~15-20 דקות).
+זהו המדריך המעודכן, המשקף את האוטומציה שנבנתה בפועל. Make חינמי לתמיד
+(1000 פעולות/חודש, 2 תרחישים פעילים) — אין טרייל שפג.
 
-## רעיון כללי
-האישור/דחייה נעשה דרך **Airtable עצמו** (שדה `Status`), לא דרך כפתורים במייל —
-זה הדרך הנקייה ב-Make. המשתמש מקבל מייל עם הדף + קישור, ואז ב-Airtable משנה את
-`Status` ל-`Approved` (לשמור) או ל-`Rejected` + כותב `Note` (ליצור דף חדש).
-
+## זרימה כללית
 ```
-Airtable (Watch Records, לפי Last modified)
-  └─ Filter: Status = "New"  OR  Status = "Rejected"
-  └─ HTTP: Openverse  → 3 כתובות תמונה
-  └─ HTTP: Groq       → דף HTML מלא (משבץ את 3 התמונות + מפה עם 5 קואורדינטות)
-  └─ GitHub: Create a File → קומיט הדף  (גיבוי בכל הרצה)
-  └─ Airtable: Update → PageLink = קישור GitHub Pages, Status = "PendingApproval"
-  └─ Email: Send       → הדף + הקישור + הנחיה: לאשר/לדחות ב-Airtable
+1. Airtable  – Watch Records   (טריגר: עיר חדשה / דחייה)
+2. Tools     – Set variable    (שם קובץ ייחודי לכל הרצה)
+3. HTTP      – Openverse        (3 תמונות, ללא מפתח)
+4. HTTP      – Groq AI          (מייצר דף HTML מלא + מפה)
+5. GitHub    – Make an API Call (commit הדף — גיבוי בכל הרצה)
+6. Airtable  – Update a Record  (PageLink + Status=PendingApproval)
+7. Email     – Send an Email    (Outlook SMTP — שולח את הדף)
 ```
-- **אישור:** המשתמש קובע `Status=Approved` → הטריגר רץ, ה-Filter חוסם (לא New/Rejected) → לא קורה כלום, והקישור כבר שמור. ✅
-- **דחייה:** `Status=Rejected` (+ Note) → הטריגר רץ, ה-Filter עובר → נוצר דף חדש לפי ההערה → חוזר ל-PendingApproval. 🔁
+- **אישור:** המשתמש קובע `Status=Approved` ב-Airtable → הקישור כבר שמור.
+- **דחייה:** `Status=Rejected` (+ `Note`) → הטריגר רץ שוב ויוצר דף חדש לפי ההערה.
+
+> **חשוב — מספרי מודולים:** ב-Make לכל מודול יש מספר פנימי שלא בהכרח 1..7
+> (אם מוחקים ומוסיפים מודול, המספרים קופצים). בכל הפניה (`{{N.שדה}}`) השתמשו
+> ב**מספר האמיתי** שמופיע על העיגול. בבנייה שלנו: Airtable=1, Set variable=17,
+> Openverse=2, Groq=4, GitHub=5, Airtable Update=9, Email=15.
 
 ## טבלת ה-Airtable
-שדות: `City` (text), `Email` (email), `Status` (single-select: `New`,`PendingApproval`,`Approved`,`Rejected`), `Note` (long text), `PageLink` (URL).
+שדות: `City` (text), `Email` (email), `Status` (single-select: `New`/`PendingApproval`/`Approved`/`Rejected`), `Note` (long text), `PageLink` (URL), `Last Modified` (**Last modified time**, עוקב אחרי **All editable fields**).
 
 ---
 
-## המודולים, אחד-אחד
+## מודול 1 — Airtable › Watch Records
+- **Connection:** Airtable PAT (ראו README).
+- **Base / Table:** הבסיס והטבלה.
+- **Trigger field:** `Last Modified`  · **Label field:** `Last Modified`
+- **Limit:** `2`
+- **Formula** (מסנן רק עיר חדשה או נדחתה; `TRIM` מנקה רווחים נסתרים):
+  ```
+  OR(TRIM({Status})="New",TRIM({Status})="Rejected")
+  ```
+> ⚠️ אם נתקעים על מודול 1 בדחייה: ודאו ש-`Last Modified` עוקב אחרי **כל השדות**
+> (Edit field → All editable fields), אחרת שינוי Status לא מעדכן אותו והטריגר לא תופס.
 
-### מודול 1 — Airtable › Watch Records (טריגר)
-- מוסיפים מודול **Airtable → Watch Records**.
-- **Connection:** Create → מדביקים את ה-Airtable PAT (ראו README, סעיף המפתחות).
-- **Base / Table:** בוחרים את הבסיס והטבלה.
-- **Trigger:** `Last modified time` (כדי שגם דחייה תפעיל). אם אין שדה כזה — צרו שדה "Last Modified" ב-Airtable.
-- **Limit:** 2.
+## מודול 2 — Tools › Set variable  (שם קובץ ייחודי)
+מוסיפים אותו **בין מודול 1 ל-Openverse** (לוחצים על הקו → `+`).
+- **Variable name:** `fname`
+- **Variable value:**
+  ```
+  page-{{1.id}}-{{formatDate(now; "YYYYMMDDHHmmss")}}.html
+  ```
+> זה נותן שם ייחודי לכל הרצה → GitHub לא מבקש `sha` בדחייה, וכל הרצה נשמרת בנפרד
+> (מקיים את הדרישה "גיבוי בכל הפעלה"). בהמשך מפנים אליו כ-`{{17.fname}}` (לפי המספר אצלכם).
 
-### מודול 2 — Filter (בין מודול 1 ל-3)
-- לוחצים על החיבור (הקו) בין המודולים → **Set up a filter**.
-- תנאי: `Status` **equal** `New` → ואז **OR** → `Status` equal `Rejected`.
-
-### מודול 3 — HTTP › Make a request (Openverse — תמונות)
+## מודול 3 — HTTP › Make a request  (Openverse — תמונות)
 - **URL:** `https://api.openverse.org/v1/images/`
-- **Method:** GET
-- **Query String:** `q` = `{{1.City}} city landmark` , `page_size` = `6`
-- **Parse response:** Yes (כדי לקבל JSON).
-- בפלט נשתמש ב: `{{3.results[1].url}}`, `{{3.results[2].url}}`, `{{3.results[3].url}}`.
+- **Method:** `GET`
+- **Query String:** `q` = `{{1.City}}` · `page_size` = `6`
+- **Parse response:** Yes
+> ⚠️ משתמשים ב-`{{1.City}}` בלבד — **בלי** "landmark" (ערים קטנות מחזירות 0 תוצאות עם המילה הזו).
 
-### מודול 4 — HTTP › Make a request (Groq — מייצר HTML)
+## מודול 4 — HTTP › Make a request  (Groq — מייצר HTML)
 - **URL:** `https://api.groq.com/openai/v1/chat/completions`
-- **Method:** POST
-- **Headers:** הוסיפו header אחד — `Authorization` = `Bearer gsk_...` (המפתח שלכם מ-Groq).
-- **Body type:** Raw · **Content type:** JSON (application/json)
-- **Request content:** מדביקים את ה-JSON הבא (ה-prompt המלא ב-`prompt.md`):
-```json
-{
-  "model": "llama-3.3-70b-versatile",
-  "temperature": 0.4,
-  "messages": [
-    { "role": "system", "content": "<<< מדביקים כאן את ה-System message מ-prompt.md (כולל התבנית) >>>" },
-    { "role": "user", "content": "City/country: {{1.City}}. Use these 3 image URLs: {{3.results[1].url}}, {{3.results[2].url}}, {{3.results[3].url}}. {{if(1.Status = \"Rejected\"; \"Previous page rejected. User note: \" + 1.Note; \"\")}}" }
-  ]
-}
-```
-- **Parse response:** Yes.
-- ה-HTML נמצא ב: `{{4.choices[1].message.content}}`.
+- **Method:** `POST`
+- **Authentication:** API key → Header → Name `Authorization`, Value `Bearer gsk_...`
+  (ודאו שאין **שורה ריקה / רווח** בסוף הערך — זה שובר את ה-header).
+- **Body type:** Raw · **Content type:** JSON
+- **Request content:** מדביקים את כל `groq-http-body.json`.
+- **Parse response:** Yes
+> ה-prompt מורה ל-AI להחזיר דף HTML שלם. הקואורדינטות נשמרות כ-`data-lat`/`data-lng`
+> על הכרטיסים, והמפה קוראת אותן מה-DOM — כך גרשיים בשם אטרקציה לא שוברים את המפה.
 
-### מודול 5 — GitHub › Create a File (גיבוי בכל הרצה)
-- **Connection:** Create → מתחברים עם GitHub (ראו README).
-- **Owner:** `hila24` · **Repo:** `AfekaRot` *(עדכנו לשלכם)*
-- **Path:** `hw-3/generated/{{replace(lower(1.City); " "; "-")}}-{{formatDate(now; "YYYYMMDD-HHmmss")}}.html`
-- **Content:** `{{4.choices[1].message.content}}`
-- **Commit message:** `hw-3: backup page for {{1.City}}`
-- שומרים בצד את ה-Path הזה — נבנה ממנו את הקישור במודול הבא.
+## מודול 5 — GitHub › Make an API Call  (גיבוי הדף)
+*(לאפליקציית GitHub ב-Make אין מודול "Create a File", לכן API Call ידני.)*
+- **Connection:** GitHub (Token עם הרשאת **Contents: Read+Write**, או Sign in).
+- **URL** (שורה אחת, **בלי newline בסוף!**):
+  ```
+  /repos/hila24/AfekaRot/contents/hw-3/generated/{{17.fname}}
+  ```
+- **Method:** `PUT`
+- **Body:** מדביקים את `github-api-body.json` (התוכן מקודד ב-`base64`).
+  ודאו שמספר המודול בתוך `base64(...)` תואם ל-Groq שלכם (אצלנו `4`).
 
-### מודול 6 — Airtable › Update a Record
+## מודול 6 — Airtable › Update a Record  (שמירת הקישור)
 - **Record ID:** `{{1.id}}`
-- **PageLink:** `https://hila24.github.io/AfekaRot/{{5.content.path}}` *(עדכנו owner/repo)*
 - **Status:** `PendingApproval`
+- **PageLink:**
+  ```
+  https://hila24.github.io/AfekaRot/hw-3/generated/{{17.fname}}
+  ```
 
-### מודול 7 — Email › Send an Email
-- **Connection:** Create → SMTP של Gmail (host `smtp.gmail.com`, port `465`/SSL, App Password) — או חיבור Gmail המובנה של Make.
+## מודול 7 — Email › Send an Email  (Outlook)
+> Make **חוסם SMTP רגיל ל-Gmail**. השתמשנו בחשבון **Outlook** (SMTP מותר), או לחלופין
+> "Sign in with Microsoft". (אם רוצים Gmail — חייבים את אפליקציית Gmail עם OAuth.)
+- **Connection (SMTP):** Host `smtp-mail.outlook.com` · Port `587` · STARTTLS · המייל + הסיסמה.
 - **To:** `{{1.Email}}`
 - **Subject:** `הדף שלך עבור {{1.City}} מוכן — לאישור/דחייה`
 - **Content type:** HTML
@@ -87,23 +96,27 @@ Airtable (Watch Records, לפי Last modified)
 ```html
 <div dir="rtl" style="font-family:Arial">
   <h2>הדף עבור {{1.City}} מוכן 🎉</h2>
-  <p>צפייה בדף המלא (כולל מפה אינטראקטיבית):
-     <a href="https://hila24.github.io/AfekaRot/{{5.content.path}}">לחצו כאן</a></p>
-  <hr>
-  <p><b>להחלטה:</b> פתחו את שורת הרשומה ב-Airtable —</p>
-  <ul>
-    <li>לאישור: שנו את <b>Status</b> ל-<b>Approved</b>.</li>
-    <li>לדחייה: שנו ל-<b>Rejected</b> ואפשר להוסיף <b>Note</b> לשיפור — וייווצר דף חדש.</li>
-  </ul>
+  <p>צפייה בדף: <a href="https://hila24.github.io/AfekaRot/hw-3/generated/{{17.fname}}">לחצו כאן</a></p>
+  <p><b>להחלטה ב-Airtable:</b> Status=Approved לאישור, או Status=Rejected + Note ליצירת דף חדש.</p>
 </div>
 ```
 
-זהו. מפעילים את התרחיש (**Scheduling → ON**), מוסיפים שורה ב-Airtable עם `City`,
-`Email` ו-`Status=New`, ותוך דקה מתחילה הריצה.
-
 ---
 
-## מה צריך לערוך לפני הפעלה
-1. בכל מקום שכתוב `hila24` / `AfekaRot` — שמים את שם המשתמש והריפו שלכם.
-2. מפעילים GitHub Pages על הריפו (Settings → Pages → Branch: main) כדי שהקישור יהיה צפייה.
-3. 3 המפתחות (Groq, Airtable, GitHub) + חיבור המייל — לפי הסעיף ב-`README.md`.
+## תקלות שנתקלנו בהן (ותיקונן)
+| תקלה | סיבה | תיקון |
+|------|------|-------|
+| header Authorization לא תקין | שורה ריקה/רווח אחרי המפתח | להשאיר שורה אחת בלבד |
+| קובץ נשמר עם `%0A` בשם | newline בסוף שדה ה-URL | למחוק את השורה הריקה |
+| קישור במייל ריק | הפניה לפלט GitHub שלא נפתר | לבנות מ-`{{fname}}` (Set variable) |
+| תמונות שבורות | "landmark" בשאילתה = 0 תוצאות | `q = {{1.City}}` בלבד |
+| המפה לא נטענת | גרשיים `"` בשם שברו JS | קואורדינטות מ-`data-lat`/`data-lng` (DOM) |
+| תקוע על מודול 1 בדחייה | Last Modified לא עוקב אחרי Status | Edit field → All editable fields |
+| Rejected לא עובר בפורמולה | רווח נסתר בערך האופציה | `TRIM({Status})` בפורמולה |
+| GitHub 422 "sha wasn't supplied" | שם קובץ חוזר על עצמו בדחייה | שם ייחודי לכל הרצה (Set variable) |
+| GitHub Pages 404 לרגע | Pages בונה מחדש ~1-3 דק' אחרי commit | להמתין דקה-שתיים |
+
+## דברים לערוך לפני הרצה
+1. בכל מקום `hila24` / `AfekaRot` → שם המשתמש והריפו שלכם.
+2. להפעיל GitHub Pages (Settings → Pages → Branch: main).
+3. למלא 4 חיבורים: Groq, Airtable, GitHub, Outlook (ראו README).

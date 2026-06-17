@@ -2,3 +2,6 @@
 *.zip
 hw-3/generated/
 hw-3/test.html
+
+# Office temp lock files
+~$*

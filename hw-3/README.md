@@ -16,28 +16,30 @@
 ## הקבצים
 | קובץ | תפקיד |
 |------|-------|
-| `make-build-guide.md` | **המדריך הראשי** — בניית האוטומציה ב-Make, מודול-אחר-מודול |
-| `make-blueprint.json` | נסיון ייבוא מהיר ל-Make (אם הייבוא לא חלק — בונים לפי המדריך) |
-| `prompt.md` | ה-prompt שנשלח ל-Groq (ה-AI מחזיר את דף ה-HTML המלא) |
-| `sample.html` | דף לדוגמה שנוצר (תל אביב) — לתצוגה בשקף ובהרצה ב-GitHub Pages |
-| `SLIDES.md` | תוכן מוכן לשקפי ההגשה |
-| `workflow.n8n.json` + `build-html.js` | **חלופה ל-n8n** (אם תבחרו n8n במקום Make) — לא נדרש |
+| `make-build-guide.md` | **המדריך המלא** — בניית 7 המודולים ב-Make, כולל כל התקלות והתיקונים |
+| `groq-http-body.json` | גוף הבקשה למודול Groq (ה-prompt שמייצר את דף ה-HTML) — מדביקים כמו שהוא |
+| `github-api-body.json` | גוף הבקשה למודול GitHub (commit הקובץ, מקודד base64) |
+| `prompt.md` | ה-prompt של ה-AI בהסבר קריא |
+| `sample.html` | דף לדוגמה (תל אביב) — לתצוגה ולהרצה ב-GitHub Pages |
+| `submission-hw3.pptx` | **מצגת ההגשה** — 5 שקפים, מכניסים בה 3 צילומי מסך |
+| `SLIDES.md` | תוכן הטקסט לשקפים |
+| `workflow.n8n.json` + `build-html.js` | חלופת n8n (לא בשימוש — בחרנו Make) |
 
-## זרימת האוטומציה
+## זרימת האוטומציה (7 מודולים)
 ```
-Airtable (Watch Records, לפי Last modified)
-   └─ Filter: Status = "New" OR "Rejected"
-   └─ Openverse        ← 3 תמונות אמיתיות (ללא מפתח API)
-   └─ Groq (AI)        ← מחזיר דף HTML מלא: גלריה + 5 אטרקציות + מפת Leaflet עם סמנים
-   └─ GitHub           ← קומיט הדף לריפו  ← גיבוי בכל הרצה
-   └─ Airtable Update  ← PageLink = קישור הדף, Status = "PendingApproval"
-   └─ Email            ← שולח את הדף + הקישור + הנחיה לאשר/לדחות ב-Airtable
-        אישור: Status=Approved  → הקישור כבר שמור ✅
-        דחייה: Status=Rejected + Note → הטריגר רץ שוב ויוצר דף חדש לפי ההערה 🔁
+1. Airtable – Watch Records   ← טריגר: Status=New או Rejected (Formula עם TRIM)
+2. Tools    – Set variable     ← fname = שם קובץ ייחודי לכל הרצה
+3. HTTP     – Openverse         ← 3 תמונות אמיתיות (q={{City}}, ללא מפתח)
+4. HTTP     – Groq AI           ← מחזיר דף HTML מלא: גלריה + 5 אטרקציות + מפת Leaflet
+5. GitHub   – Make an API Call  ← commit הדף לריפו  ← גיבוי בכל הרצה
+6. Airtable – Update a Record   ← PageLink = קישור הדף, Status = PendingApproval
+7. Email    – Send an Email     ← Outlook: שולח את הדף + הנחיה לאשר/לדחות ב-Airtable
+     אישור: Status=Approved  → הקישור כבר שמור ✅
+     דחייה: Status=Rejected + Note → הטריגר רץ שוב ויוצר דף חדש 🔁
 ```
 
-המפה חינמית לגמרי (Leaflet + OpenStreetMap, ללא מפתח), והתמונות מ-Openverse
-(**ללא מפתח**). הסמנים על המפה נקבעים מהקואורדינטות שה-AI מחזיר לכל אטרקציה.
+המפה חינמית (Leaflet + OpenStreetMap), התמונות מ-Openverse (**ללא מפתח**), והסמנים
+נקבעים מהקואורדינטות (`data-lat`/`data-lng`) שה-AI מחזיר לכל אטרקציה.
 
 ---
 
@@ -46,39 +48,33 @@ Airtable (Watch Records, לפי Last modified)
 > **כלל ברזל:** המפתחות נכנסים **רק** לתוך Make (במסך החיבורים/Connections של כל מודול),
 > **לעולם לא** לקובץ בפרויקט.
 
-צריך 3 מפתחות + חיבור מייל אחד:
-
 ### 1. Groq (ה-AI) — חינמי
-- **משיגים:** <https://console.groq.com> → התחברות → **API Keys** → *Create API Key* → מעתיקים `gsk_...`.
-- **משלבים ב-Make:** מודול **HTTP (Groq)** → תחת *Headers* מוסיפים header:
-  `Authorization` = `Bearer gsk_********************` (המילה `Bearer`, רווח, ואז המפתח).
+- **משיגים:** <https://console.groq.com> → **API Keys** → *Create API Key* → מעתיקים `gsk_...`.
+- **משלבים:** מודול **HTTP (Groq)** → Authentication = **API key** → Header: `Authorization` = `Bearer gsk_...`
+  (שורה אחת בלבד — בלי רווח/שורה ריקה בסוף).
 
-### 2. Airtable (הטריגר + שמירת הקישור) — חינמי
-- **משיגים:** <https://airtable.com/create/tokens> → *Create token* → הרשאות `data.records:read` + `data.records:write` + `schema.bases:read`, משייכים את ה-Base, ומעתיקים `pat...`.
-- **בונים טבלה** עם השדות: `City` (text), `Email` (email), `Status` (single-select: `New`/`PendingApproval`/`Approved`/`Rejected`), `Note` (long text), `PageLink` (URL).
-- **משלבים ב-Make:** במודולי **Airtable** → *Create a connection* → מדביקים את ה-PAT, ובוחרים Base + Table.
+### 2. Airtable (טריגר + שמירת הקישור) — חינמי
+- **משיגים:** <https://airtable.com/create/tokens> → הרשאות `data.records:read` + `data.records:write` + `schema.bases:read`, משייכים את ה-Base → `pat...`.
+- **טבלה:** `City`, `Email`, `Status` (New/PendingApproval/Approved/Rejected), `Note`, `PageLink`, `Last Modified` (עוקב אחרי All editable fields).
+- **משלבים:** במודולי **Airtable** (Watch + Update) → Connection → מדביקים את ה-PAT.
 
 ### 3. GitHub (גיבוי בכל הרצה) — חינמי
-- **משיגים:** <https://github.com/settings/tokens> → *Generate new token (classic)* → הרשאת **`repo`** → מעתיקים `ghp_...`.
-- **משלבים ב-Make:** מודול **GitHub** → *Create a connection* (התחברות עם GitHub, או הדבקת ה-Token).
+- **משיגים:** <https://github.com/settings/tokens> → Fine-grained token → הרשאת **Contents: Read and write** על הריפו → `github_pat_...`.
+- **משלבים:** מודול **GitHub** → Connection.
 
-### 4. מייל (Gmail) — חינמי
-- **הכי קל:** מודול **Email → Send an Email** → *Create a connection* עם SMTP:
-  Host `smtp.gmail.com`, Port `465` (SSL), User = המייל, Password = **App Password**
-  (מ-<https://myaccount.google.com/apppasswords>, דורש אימות דו-שלבי פעיל).
+### 4. מייל — **Outlook** (חינמי)
+- Make חוסם SMTP רגיל ל-Gmail, לכן השתמשנו ב-**Outlook**:
+- **משלבים:** מודול **Email → Send an Email** → Connection (SMTP): Host `smtp-mail.outlook.com`, Port `587`, STARTTLS, המייל והסיסמה. (חלופה: "Sign in with Microsoft".)
 
-### ללא מפתח (לא צריך כלום)
+### ללא מפתח
 - **Openverse** (תמונות) ו-**OpenStreetMap/Leaflet** (מפה).
 
 ---
 
-## דברים לערוך לפני הרצה ראשונה
-1. בכל מקום שכתוב `hila24` / `AfekaRot` — שמים את שם המשתמש והריפו שלכם (מזה נבנה קישור ה-GitHub Pages שנשמר ב-Airtable).
-2. מפעילים **GitHub Pages** על הריפו (Settings → Pages → Branch: main).
-3. ממלאים את 3 המפתחות + חיבור המייל לפי הסעיף למעלה.
-4. מפעילים את התרחיש (**Scheduling → ON**) — שורה חדשה ב-Airtable עם `Status=New` מתחילה ריצה.
-
-המדריך המלא, מודול-אחר-מודול, נמצא ב-`make-build-guide.md`.
+## הגשה
+`submission-hw3.pptx` — 5 שקפים מוכנים. גוררים פנימה 3 צילומי מסך:
+1. **הדף שנוצר** (שקף 2)  2. **ה-canvas של Make** (שקף 3)  3. **טבלת Airtable** (שקף 3).
+שקף 5 כולל את **טבלת ה-API Keys** לבודק.
 
 ## בדיקת מנוע הדף מקומית (לא חובה)
 ```bash

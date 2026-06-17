@@ -43,6 +43,31 @@
 
 ---
 
+## מה בדיוק בניתי — התרחיש שלי (מספרים אמיתיים)
+
+> סעיף זה מתאר את הבנייה הקונקרטית, כך שברור בדיוק לאן כל טוקן נכנס.
+
+- **ריפו:** `hila24/AfekaRot` · **דפים נשמרים ב:** `hw-3/generated/page-<id>-<timestamp>.html`
+- **כתובת הדפים:** `https://hila24.github.io/AfekaRot/hw-3/generated/...`
+- **בסיס Airtable** עם טבלה אחת ובה השדות: `City`, `Email`, `Status`, `Note`, `PageLink`, `Last Modified`.
+
+המודולים בתרחיש שלי (המספר = המספר האמיתי על העיגול ב-Make):
+
+| # מודול | מה הוא | המפתח/חיבור שמשולב בו |
+|---------|--------|------------------------|
+| **1** | Airtable – Watch Records (טריגר) | חיבור **Airtable PAT** |
+| **17** | Tools – Set variable (`fname`) | — (ללא מפתח) |
+| **2** | HTTP – Openverse (`GET /v1/images/`) | — (ללא מפתח) |
+| **4** | HTTP – Groq (`POST /openai/v1/chat/completions`) | **Groq** — header `Authorization: Bearer gsk_...` |
+| **5** | GitHub – Make an API Call (`PUT .../contents/...`) | חיבור **GitHub** (Token עם Contents: R+W) |
+| **9** | Airtable – Update a Record | אותו חיבור **Airtable PAT** (כמו מודול 1) |
+| **15** | Email – Send an Email | חיבור **Outlook** (SMTP) |
+
+**כך שכל טוקן שהבודק משיג (מהעמודים הכלליים בסעיף הבא) נכנס למודול הזה:**
+Groq → מודול **4** · Airtable → מודולים **1 + 9** · GitHub → מודול **5** · Outlook → מודול **15**.
+
+---
+
 ## איך משיגים ומשלבים כל מפתח API — צעד אחר צעד  ⭐ (חשוב למי שבודק)
 
 > **כלל ברזל:** המפתחות נכנסים **רק** לתוך Make (מסך ה-Connections של כל מודול),

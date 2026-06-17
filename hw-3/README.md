@@ -21,7 +21,7 @@
 | `github-api-body.json` | גוף הבקשה למודול GitHub (commit הקובץ, מקודד base64) |
 | `prompt.md` | ה-prompt של ה-AI בהסבר קריא |
 | `sample.html` | דף לדוגמה (תל אביב) — לתצוגה ולהרצה ב-GitHub Pages |
-| `submission-hw3.pptx` | **מצגת ההגשה** — 5 שקפים, מכניסים בה 3 צילומי מסך |
+| `hw3.pptx` | **מצגת ההגשה** — 5 שקפים עם צילומי המסך |
 | `SLIDES.md` | תוכן הטקסט לשקפים |
 | `workflow.n8n.json` + `build-html.js` | חלופת n8n (לא בשימוש — בחרנו Make) |
 
@@ -126,7 +126,7 @@ Groq → מודול **4** · Airtable → מודולים **1 + 9** · GitHub →
 ---
 
 ## הגשה
-`submission-hw3.pptx` — 5 שקפים מוכנים. גוררים פנימה 3 צילומי מסך:
+`hw3.pptx` — 5 שקפים עם צילומי המסך:
 1. **הדף שנוצר** (שקף 2)  2. **ה-canvas של Make** (שקף 3)  3. **טבלת Airtable** (שקף 3).
 שקף 5 כולל את **טבלת ה-API Keys** לבודק.
 
